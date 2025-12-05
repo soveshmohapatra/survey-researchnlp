@@ -112,7 +112,7 @@ def save_to_gsheets(data):
         conn.update(worksheet="Sheet1", data=updated_data)
         return True
     except Exception as e:
-        st.error(f"Error saving data: {e}")
+        st.error(f"Error saving data: {repr(e)}")
         return False
 
 def show_debrief():
