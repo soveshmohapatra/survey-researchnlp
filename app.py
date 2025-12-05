@@ -12,16 +12,66 @@ st.set_page_config(
     layout="centered"
 )
 
-# Initialize Session State
+# --- Helper Functions for Randomization ---
+
+def generate_experiment_sequence(abstracts):
+    """
+    Generates a sequence of 40 abstracts (20 unique IDs x 2 conditions).
+    Balanced across 5 categories: 4 unique IDs per category.
+    """
+    # 1. Group by category (assuming id format 'prefix_number')
+    categories = {}
+    for item in abstracts:
+        cat_prefix = item['id'].split('_')[0]
+        if cat_prefix not in categories:
+            categories[cat_prefix] = []
+        categories[cat_prefix].append(item)
+    
+    selected_items = []
+    
+    # 2. For each category, select 4 unique IDs
+    for cat, items in categories.items():
+        # We need at least 4 items per category. 
+        if len(items) < 4:
+            chosen = items
+        else:
+            chosen = random.sample(items, 4)
+            
+        # For each chosen ID, add BOTH War and Neutral conditions
+        for item in chosen:
+            selected_items.append({
+                "abstract": item,
+                "condition": "war"
+            })
+            selected_items.append({
+                "abstract": item,
+                "condition": "neutral"
+            })
+            
+    # 3. Shuffle the final sequence completely
+    random.shuffle(selected_items)
+    return selected_items
+
+# --- Session State Initialization ---
+
 if 'page' not in st.session_state:
     st.session_state.page = 'consent'
-if 'condition' not in st.session_state:
-    # Randomly assign condition: 'war' or 'neutral'
-    st.session_state.condition = random.choice(['war', 'neutral'])
+
+if 'experiment_sequence' not in st.session_state:
+    # Generate the sequence once at the start
+    st.session_state.experiment_sequence = generate_experiment_sequence(ABSTRACTS)
+
+if 'current_index' not in st.session_state:
+    st.session_state.current_index = 0
+
 if 'responses' not in st.session_state:
-    st.session_state.responses = {}
+    st.session_state.responses = []  # List of dicts
+
 if 'start_time' not in st.session_state:
     st.session_state.start_time = time.time()
+
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = str(time.time())
 
 def next_page(page_name):
     st.session_state.page = page_name
@@ -35,8 +85,9 @@ def show_consent():
     ### Welcome to our study.
     
     We are conducting a study on how people interpret scientific texts. 
-    You will be asked to read a short scientific abstract and answer a few questions about it.
-    The study should take approximately 5 minutes.
+    You will be asked to read a series of scientific abstracts and answer a few questions about each one.
+    
+    **The study consists of 40 short abstracts and will take approximately 20-30 minutes to complete.**
     
     Your participation is voluntary, and your responses will be anonymous.
     """)
@@ -47,66 +98,89 @@ def show_consent():
 def show_instructions():
     st.title("Instructions")
     st.write("""
-    Please read the following scientific abstract carefully. 
-    On the next page, you will be asked to rate your impressions of the research described.
+    In this task, you will be presented with **40 scientific abstracts**, one at a time.
+    
+    For each abstract, please read it carefully and then answer the questions that follow regarding your impressions of the research and the problem described.
+    
+    There are no right or wrong answers; we are interested in your honest opinions.
     """)
-    if st.button("Start"):
+    if st.button("Start Experiment"):
         next_page('experiment')
 
 def show_experiment():
-    st.title("Abstract Reading")
+    # Check if we are done
+    if st.session_state.current_index >= len(st.session_state.experiment_sequence):
+        next_page('debrief')
+        return
+
+    # Get current item
+    index = st.session_state.current_index
+    current_item = st.session_state.experiment_sequence[index]
+    abstract_data = current_item['abstract']
+    condition = current_item['condition']
+    text_to_show = abstract_data[condition]
     
-    # Select a random abstract if not already selected
-    if 'current_abstract' not in st.session_state:
-        st.session_state.current_abstract = random.choice(ABSTRACTS)
+    # Progress
+    st.progress((index) / len(st.session_state.experiment_sequence))
+    st.caption(f"Abstract {index + 1} of {len(st.session_state.experiment_sequence)}")
     
-    item = st.session_state.current_abstract
-    condition = st.session_state.condition
-    text_to_show = item[condition]
+    # Removed title display as requested
+    # st.title(abstract_data['title']) 
     
-    st.markdown(f"### {item['title']}")
     st.info(text_to_show)
+
     
     st.write("---")
     st.subheader("Your Impressions")
     
-    with st.form("response_form"):
+    with st.form(key=f"form_{index}"):
         st.write("**Part 1: Assessment**")
         credibility = st.slider("How credible does this research seem?", 1, 7, 4, help="1 = Not at all credible, 7 = Extremely credible")
         urgency = st.slider("How urgent is the problem described?", 1, 7, 4, help="1 = Not at all urgent, 7 = Extremely urgent")
-        risk = st.slider("How risky does the situation seem?", 1, 7, 4, help="1 = Not at all risky, 7 = Extremely risky")
         
         st.write("**Part 2: Action**")
-        intervention = st.text_area("What kind of intervention do you think is most appropriate here?", placeholder="E.g., more funding, public awareness, immediate action...")
-        behavior_intention = st.slider("How likely would you be to support policies addressing this issue?", 1, 7, 4, help="1 = Extremely unlikely, 7 = Extremely likely")
+        policy_support = st.slider("How likely would you be to support policies addressing this issue?", 1, 7, 4, help="1 = Extremely unlikely, 7 = Extremely likely")
+        gov_funding = st.slider("How likely would you be willing to let the Government provide fund to support this project?", 1, 7, 4, help="1 = Extremely unlikely, 7 = Extremely likely")
         
-        submitted = st.form_submit_button("Submit")
+        submitted = st.form_submit_button("Submit & Next")
         if submitted:
-            # Save responses to session state
-            st.session_state.responses = {
-                "session_id": str(st.session_state.start_time),
+            # Save response
+            response_data = {
+                "session_id": st.session_state.session_id,
+                "trial_index": index + 1,
+                "abstract_id": abstract_data['id'],
                 "condition": condition,
-                "abstract_id": item['id'],
                 "credibility": credibility,
                 "urgency": urgency,
-                "risk": risk,
-                "intervention": intervention,
-                "behavior_intention": behavior_intention
+                "policy_support": policy_support,
+                "gov_funding": gov_funding,
+                "timestamp": time.time()
             }
-            next_page('debrief')
+            st.session_state.responses.append(response_data)
+            
+            # Advance index
+            st.session_state.current_index += 1
+            st.rerun()
 
-def save_to_gsheets(data):
+def save_to_gsheets(data_list):
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         # Read existing data
-        existing_data = conn.read(worksheet="Sheet1", usecols=list(range(6)), ttl=5)
-        existing_data = existing_data.dropna(how="all")
+        # We need to handle the case where the sheet is empty or has different columns
+        # But for simplicity, we just append. 
+        # Note: In a real high-concurrency scenario, this might have race conditions, 
+        # but for a simple Streamlit app it's usually acceptable.
         
-        # Create new row DataFrame
-        new_row = pd.DataFrame([data])
+        existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        
+        # Create new rows DataFrame
+        new_rows = pd.DataFrame(data_list)
         
         # Append
-        updated_data = pd.concat([existing_data, new_row], ignore_index=True)
+        if existing_data.empty:
+            updated_data = new_rows
+        else:
+            updated_data = pd.concat([existing_data, new_rows], ignore_index=True)
         
         # Update Google Sheet
         conn.update(worksheet="Sheet1", data=updated_data)
@@ -122,7 +196,7 @@ def show_debrief():
         st.session_state.saved = False
         
     if not st.session_state.saved:
-        with st.spinner("Saving your response..."):
+        with st.spinner("Saving your responses..."):
             success = save_to_gsheets(st.session_state.responses)
             if success:
                 st.session_state.saved = True
@@ -132,7 +206,7 @@ def show_debrief():
     else:
         st.success("Your responses have been recorded.")
         
-    st.write("You may close this tab now.")
+    st.write("You have completed the study. You may close this tab now.")
 
 # --- Main Routing ---
 
