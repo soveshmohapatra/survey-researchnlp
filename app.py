@@ -99,7 +99,7 @@ def inject_custom_css():
         
         .abstract-text {
             font-family: 'Georgia', serif;
-            font-size: 1.1rem;
+            font-size: 1.0rem;
             line-height: 1.6;
             color: #2c3e50;
         }
@@ -178,8 +178,10 @@ def show_consent():
     """, unsafe_allow_html=True)
     
     st.caption("")
-    if st.button("I Agree to Participate"):
-        next_page('instructions')
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        if st.button("I Agree to Participate"):
+            next_page('instructions')
 
 def show_instructions():
     inject_custom_css()
@@ -202,7 +204,7 @@ def show_instructions():
     """, unsafe_allow_html=True)
     
     st.caption("")
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([3, 2, 3])
     with col2:
         if st.button("Start Experiment"):
             next_page('experiment')
