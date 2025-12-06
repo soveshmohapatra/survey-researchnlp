@@ -77,37 +77,139 @@ def next_page(page_name):
     st.session_state.page = page_name
     st.rerun()
 
+# --- CSS Styling ---
+
+def inject_custom_css():
+    st.markdown("""
+        <style>
+        /* General app styling */
+        .stApp {
+            background-color: #f8f9fa;
+        }
+        
+        /* Abstract Card Styling */
+        .abstract-card {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+            border-left: 5px solid #4a90e2;
+        }
+        
+        .abstract-text {
+            font-family: 'Georgia', serif;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #2c3e50;
+        }
+        
+        .question-header {
+            color: #7f8c8d;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        
+        /* Slider Styling Tweaks */
+        .stSlider label p {
+            font-weight: 400 !important;
+            color: #34495e !important;
+            font-size: 1.1rem !important;
+        }
+        
+        /* Progress Bar */
+        .progress-text {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Buttons */
+        .stButton button {
+            width: 100%;
+            background-color: #4a90e2;
+            color: white;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            border: none;
+        }
+        .stButton button:hover {
+            background-color: #357abd;
+            color: white;
+        }
+        
+        /* Hide Streamlit Form Border */
+        [data-testid="stForm"] {
+            border: none;
+            padding: 0;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
 # --- Pages ---
 
 def show_consent():
-    st.title("Research Study Consent")
-    st.write("""
-    ### Welcome to our study.
+    inject_custom_css()
+    st.markdown("<h1 style='text-align: center; color: #2c3e50;'>Research Study Participation</h1>", unsafe_allow_html=True)
     
-    We are conducting a study on how people interpret scientific texts. 
-    You will be asked to read a series of scientific abstracts and answer a few questions about each one.
+    st.markdown("""
+    <div style='background-color: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
+        <h3 style='color: #2c3e50; margin-top: 0;'>Welcome</h3>
+        <p style='font-size: 1.1rem; line-height: 1.6;'>
+            We are conducting a scientific study on how people interpret and respond to scientific texts. 
+            Your contribution is valuable to helping us understand communication dynamics in science.
+        </p>
+        <hr style='border: 0; border-top: 1px solid #eee; margin: 1.5rem 0;'>
+        <p><strong>What to expect:</strong></p>
+        <ul style='line-height: 1.6;'>
+            <li>You will read a series of <strong>40 short abstracts</strong>.</li>
+            <li>For each, you will answer 4 brief questions ensuring your impressions.</li>
+            <li>The total time required is approximately <strong>20-30 minutes</strong>.</li>
+        </ul>
+        <p style='font-size: 0.9rem; color: #666; margin-top: 1.5rem;'>
+            <em>Your participation is entirely voluntary, and all responses will remain anonymous.</em>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    **The study consists of 40 short abstracts and will take approximately 20-30 minutes to complete.**
-    
-    Your participation is voluntary, and your responses will be anonymous.
-    """)
-    
+    st.caption("")
     if st.button("I Agree to Participate"):
         next_page('instructions')
 
 def show_instructions():
-    st.title("Instructions")
-    st.write("""
-    In this task, you will be presented with **40 scientific abstracts**, one at a time.
+    inject_custom_css()
+    st.markdown("<h1 style='text-align: center; color: #2c3e50;'>Instructions</h1>", unsafe_allow_html=True)
     
-    For each abstract, please read it carefully and then answer the questions that follow regarding your impressions of the research and the problem described.
+    st.markdown("""
+    <div style='background-color: white; padding: 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);'>
+        <p style='font-size: 1.2rem; line-height: 1.6; text-align: center;'>
+            In this task, you will be presented with scientific abstracts, one at a time.
+        </p>
+        <br>
+        <div style='display: flex; justify-content: center;'>
+            <div style='text-align: left; max-width: 600px;'>
+                <p><strong>1. Read Carefully:</strong> Please read each abstract thoroughly.</p>
+                <p><strong>2. Rate Honestly:</strong> There are no right or wrong answers. We are interested in your immediate, honest impressions.</p>
+                <p><strong>3. Stay Focused:</strong> Please try to complete the session in one sitting.</p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    There are no right or wrong answers; we are interested in your honest opinions.
-    """)
-    if st.button("Start Experiment"):
-        next_page('experiment')
+    st.caption("")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("Start Experiment"):
+            next_page('experiment')
 
 def show_experiment():
+    inject_custom_css()
+    
     # Check if we are done
     if st.session_state.current_index >= len(st.session_state.experiment_sequence):
         next_page('debrief')
@@ -115,34 +217,46 @@ def show_experiment():
 
     # Get current item
     index = st.session_state.current_index
+    total = len(st.session_state.experiment_sequence)
     current_item = st.session_state.experiment_sequence[index]
     abstract_data = current_item['abstract']
     condition = current_item['condition']
     text_to_show = abstract_data[condition]
     
     # Progress
-    st.progress((index) / len(st.session_state.experiment_sequence))
-    st.caption(f"Abstract {index + 1} of {len(st.session_state.experiment_sequence)}")
+    st.markdown(f"<p class='progress-text'>Abstract {index + 1} of {total}</p>", unsafe_allow_html=True)
+    st.progress((index) / total)
     
-    # Removed title display as requested
-    # st.title(abstract_data['title']) 
+    # Abstract Card
+    st.markdown(f"""
+    <div class='abstract-card'>
+        <div class='abstract-text'>
+            {text_to_show}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    st.info(text_to_show)
-
-    
-    st.write("---")
-    st.subheader("Your Impressions")
-    
+    # Questions
     with st.form(key=f"form_{index}"):
-        st.write("**Part 1: Assessment**")
+        # Removed wrapped question-section div
+        
+        st.markdown("<div class='question-header'>Part 1: Assessment</div>", unsafe_allow_html=True)
         credibility = st.slider("How credible does this research seem?", 1, 7, 4, help="1 = Not at all credible, 7 = Extremely credible")
+        st.caption("") # Spacer
         urgency = st.slider("How urgent is the problem described?", 1, 7, 4, help="1 = Not at all urgent, 7 = Extremely urgent")
         
-        st.write("**Part 2: Action**")
+        st.markdown("<hr style='margin: 2rem 0; border-top: 1px solid #eee;'>", unsafe_allow_html=True)
+        
+        st.markdown("<div class='question-header'>Part 2: Action</div>", unsafe_allow_html=True)
         policy_support = st.slider("How likely would you be to support policies addressing this issue?", 1, 7, 4, help="1 = Extremely unlikely, 7 = Extremely likely")
+        st.caption("") # Spacer
         gov_funding = st.slider("How likely would you be willing to let the Government provide fund to support this project?", 1, 7, 4, help="1 = Extremely unlikely, 7 = Extremely likely")
         
-        submitted = st.form_submit_button("Submit & Next")
+        # Removed closing div for question-section
+        
+        st.write("")
+        submitted = st.form_submit_button("Submit Response & Next Abstract")
+        
         if submitted:
             # Save response
             response_data = {
@@ -161,6 +275,9 @@ def show_experiment():
             # Advance index
             st.session_state.current_index += 1
             st.rerun()
+
+    
+
 
 def save_to_gsheets(data_list):
     try:
